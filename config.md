@@ -1,0 +1,5 @@
+引脚功能
+
+PA1  ADC AO采样
+PA2  力传感器数字接收
+PB14/PB15  USART1TX/RX
