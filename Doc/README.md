@@ -9,8 +9,8 @@ STM32H750VBTx 固件工程，由 STM32CubeMX（`DEMO-LED.ioc`）生成骨架 + C
 
 | 引脚 | 复用 / 模式 | 用途 |
 |---|---|---|
-| PA0 | 模拟（SharedAnalog） | ADC1 通道 16，代码实际采样的是这一路 |
-| PA1 | 模拟（SharedAnalog） | `config.md` 里标注的 "ADC AO 采样" |
+| PA0 | 模拟（SharedAnalog） | ADC1_INP16 —— **`peripheral.c` 里配的是这一路** |
+| PA1 | 模拟（SharedAnalog） | ADC1_INP17 —— **`.ioc` 配的是这一路，也是 `config.md` 标注的 "ADC AO 采样"** ⚠️ 两者不一致 |
 | PA2 | GPIO 输入（上拉） | 力传感器数字信号接收 |
 | PB14 | USART1_TX（AF4） | 串口发送 |
 | PB15 | USART1_RX（AF4） | 串口接收 |
@@ -68,7 +68,7 @@ STM32H750VBTx 固件工程，由 STM32CubeMX（`DEMO-LED.ioc`）生成骨架 + C
 | 文件 | 内容 |
 |---|---|
 | `main.c` | 程序入口。`HAL_Init()` → `peripheral_Init()` → `Servo_Init()` 并只开 CH1；主循环里跑 `Servo_Update()`、`Servo_Debug_Task()`（单舵机 0/45/90/135/180° 往返扫描，每步串口打印角度、脉宽、CCR），`tim_log` 置位时调 `Sensor_Log()` 打印 ADC |
-| `peripheral.c` | **外设初始化总集**：`peripheral_Init()` 依次做 ADC1、DMA、TIM1、GPIO、USART1、TIM2 的初始化，最后 `SystemClock_Config()`。里面还包含：ADC1 连续转换 16 位（通道 16）、TIM1 作 1 Hz 左右的采样节拍（1200 分频、10000 计数）、USART1 115200、TIM2 四路 PWM、`__io_putchar()` 把 `printf` 重定向到串口、`Error_Handler()` 死循环 |
+| `peripheral.c` | **外设初始化总集**：`peripheral_Init()` 依次做 ADC1、DMA、TIM1、GPIO、USART1、TIM2 的初始化，最后 `SystemClock_Config()`。里面还包含：ADC1 连续转换 16 位（代码配的是通道 16 = PA0）、TIM1 作 **5 Hz** 的采样节拍（APB2 定时器时钟 60 MHz ÷ 1200 ÷ 10000）、USART1 115200、TIM2 四路 PWM、`__io_putchar()` 把 `printf` 重定向到串口、`Error_Handler()` 死循环 |
 | `sensor.c` | ADC 采样：`Sensor_Read()` 读 ADC 数据寄存器，`Convert_TO_Val()` 按 3.3 V 基准换算电压，`Sensor_Log()` 串口打印原始值 + 电压；`HAL_TIM_PeriodElapsedCallback()` 在定时器更新中断里采样并置 `tim_log = 1`，由主循环负责打印 |
 | `mot_drv.c` | **舵机驱动实现**（本工程最完整的一块）：按实际 TIM2 时钟自动精调分频到 1 µs 分辨率、50 Hz PWM；角度↔脉宽↔CCR 换算；梯形速度规划的平滑转动（速度/加速度可配、到位判定）；4 路同步转动；直接设 CCR/脉宽；限幅保护 |
 | `led.c` | PC13 LED：`LED_Init()` 推挽输出并置低，`LED_Tringle()` 翻转 + 延时 300 ms |
